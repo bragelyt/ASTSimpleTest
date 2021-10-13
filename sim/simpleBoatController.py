@@ -9,13 +9,14 @@ class SimpleBoatController:
             params = json.load(f)
         self.steplength = params["steplength"]
         self.crash_distance_threshold = params["crash_distance_threshold"]
-        self.actionRange = params["actionSpan"]
+        self.action_range = params["action_range"]
+        self.collision_reward = params["collision_reward"]
         self.state = state
         self.reset_state()
     
     def execute_action(self, action: int):  # Action should be in range [0,1]
-        totalRange = self.actionRange[1]- self.actionRange[0]
-        scaledAction = totalRange*action + self.actionRange[0]
+        totalRange = self.action_range[1]- self.action_range[0]
+        scaledAction = totalRange*action + self.action_range[0]
         self.steerable_angle += scaledAction*math.pi/100
         self.action_trace.append(action)
         self.next_state()
@@ -45,29 +46,25 @@ class SimpleBoatController:
         # If state is terminal and was crash -> R_E  # Crash reward (a lot)
         # If terminal but no crash -> -d  # TODO: Closest position throughout?
         # Otherwise -> log(p(x|s))  # TODO: Prob of disturbance given current state (Implement difference from last action)
-        pass
+        if self.is_endstate():
+            if self.collision_happened:
+                return 
+        else:
+            return math.log(self.get_transition_probability)
     
     def reset_state(self):  
-        if self.state is not None:  # If rollout sim, resetting wil only reset to rollout point
-            self.straight_pos = self.state["straight_pos"]   # All theese should go. Take in actions and fast forward from start
-            self.steerable_pos = self.state["steerable_pos"]
-            self.steerable_angle = self.state["steerable_angle"]
-            self.action_trace = self.state["action_trace"]
-            # self.prev_steerable_state = self.state["prev_steerable_state"]
-            # self.prev_straight_state = self.state["prev_straight_state"]
-            # self.prev_action = self.state["prev_action"]
-        else:  # If main sim, resetting wil completly rolle back simulation to start anew.
-            self.straight_pos = [0,50]
-            self.steerable_pos = [30,0]
-            self.steerable_angle = 0
-            self.action_trace = []
-            # self.prev_steerable_state = [[], []]  # x, y, action
-            # self.prev_straight_state = [[], []]
-            # self.prev_action = None
+        self.straight_pos = [0,50]
+        self.steerable_pos = [30,0]
+        self.steerable_angle = 0
+        self.action_trace = []
         self.collision_happened = False
         self.sim_in_endstate = False
+    
+    def fast_forward_state(self, action_trace):
+        for action in action_trace:
+            self.execute_action(action)
 
-    def transition_probability(self, action):
+    def get_transition_probability(self, action):
         if self.action_trace == None:
             self.transition_probability = 1
         else:
@@ -75,27 +72,15 @@ class SimpleBoatController:
 
     def get_sim_state(self):
         return self.action_trace
-    
-    def get_position_trace(self):  # Prev pos is not stored, so sim is reset, and fast forwarded through
-        action_trace = self.action_trace
-        self.reset_state()
-        steerable_state = [[],[]]
-        straight_state = [[], []]
-        for action in action_trace:
-            steerable_state[0].append(self.steerable_pos[0])
-            steerable_state[1].append(self.steerable_pos[1])
-            straight_state[0].append(self.straight_pos[0])
-            straight_state[1].append(self.straight_pos[1])
-            self.execute_action(action)
-        return steerable_state, straight_state
 
     def plot_routes(self):
         steerable_pos_trace, straight_pos_trace = self.get_position_trace()
+        print(steerable_pos_trace)
         cdt = self.crash_distance_threshold
         colors = {8*cdt: "gray", 4*cdt: "yellow", 2*cdt: "red", cdt: "black"}
-        for i in range(len(steerable_pos_trace[0])):
-            steerable_pos = [steerable_pos_trace[0][i], steerable_pos_trace[1][i]]
-            straight_pos = [straight_pos_trace[0][i], straight_pos_trace[1][i]]
+        for i in range(len(steerable_pos_trace)):
+            steerable_pos = steerable_pos_trace[i]
+            straight_pos = straight_pos_trace[i]
             distance = self.boat_distance(steerable_pos, straight_pos)
             color = "blue"
             for key, _color in colors.items():
@@ -108,3 +93,14 @@ class SimpleBoatController:
         plt.ylim(0, 100)
         plt.xlim(0, 100)
         plt.show()
+
+    def get_position_trace(self):  # Prev pos is not stored, so sim is reset, and fast forwarded through
+        action_trace = self.action_trace
+        self.reset_state()
+        steerable_state = []
+        straight_state = []
+        for action in action_trace:
+            steerable_state.append(copy.copy(self.steerable_pos))
+            straight_state.append(copy.copy(self.straight_pos))
+            self.execute_action(action)
+        return steerable_state, straight_state
