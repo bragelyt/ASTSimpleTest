@@ -1,0 +1,8 @@
+{
+    "_sim.simpleBoatController": "Simworld is 100x100",
+    "steplength": 5,
+    "crash_distance_threshold": 5,
+
+    "_main": "Action span should take steplen into account. Determines turn radius", 
+    "actionSpan": [-5, 5]
+}

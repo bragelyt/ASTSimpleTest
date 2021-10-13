@@ -1,13 +1,13 @@
+import random, json
+
 from sim.simpleBoatController import SimpleBoatController
-import math
-import random
+from ast.mcts.mctsController import MCTSController
 
 def main():
     env = SimpleBoatController()
-    actions= [-1, 0, 1]
     i = 0
     while not env.is_endstate():
-        env.execute_action(random.choice(actions))
+        env.execute_action(random.random())
         i += 1
     print("Ended in carsh? ", env.collision_happened)
     print("Nr of states:   ", i)
