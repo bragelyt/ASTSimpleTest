@@ -103,4 +103,6 @@ class SimpleBoatController:
             steerable_state.append(copy.copy(self.steerable_pos))
             straight_state.append(copy.copy(self.straight_pos))
             self.execute_action(action)
+        steerable_state.append(copy.copy(self.steerable_pos))
+        straight_state.append(copy.copy(self.straight_pos))
         return steerable_state, straight_state
