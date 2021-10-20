@@ -10,9 +10,9 @@ class SimpleBoatController:
         self.steplength = params["steplength"]
         self.crash_distance_threshold = params["crash_distance_threshold"]
         self.action_range = params["action_range"]
-        self.collision_reward = params["collision_reward"]
-        self.state = state
         self.reset_state()
+        if state is not None:
+            self.fast_forward(state)
     
     def execute_action(self, action: int):  # Action should be in range [0,1]
         totalRange = self.action_range[1]- self.action_range[0]
@@ -20,37 +20,36 @@ class SimpleBoatController:
         self.steerable_angle += scaledAction*math.pi/100
         self.action_trace.append(action)
         self.next_state()
+        p = self.get_transition_probability()
+        self.is_endstate()
+        e = self.collision_happened  # TODO: crashed?
+        d = self.boat_distance()
+        return(p, e, d)
 
     def next_state(self):
         self.steerable_pos[0] += math.sin(self.steerable_angle)*self.steplength
         self.steerable_pos[1] += math.cos(self.steerable_angle)*self.steplength
         self.straight_pos[0] += self.steplength
+        self.update_closest_distance()
 
     def is_endstate(self):
         if self.sim_in_endstate != True:
-            if self.boat_distance(self.steerable_pos, self.straight_pos) < self.crash_distance_threshold:
+            if self.get_current_distance() < self.crash_distance_threshold:
                 self.collision_happened = True
                 self.sim_in_endstate = True
             elif self.straight_pos[0] > 100:
                 self.sim_in_endstate = True
         return self.sim_in_endstate
     
+    def get_current_distance(self):  # TODO: Run after next_state and store value?
+        return self.boat_distance(self.steerable_pos, self.straight_pos)
+
     def boat_distance(self, pos1, pos2):
         return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
 
     def update_closest_distance(self):
-        # TODO: Update shortest distance for reward.
-        pass
-
-    def get_reward(self):
-        # If state is terminal and was crash -> R_E  # Crash reward (a lot)
-        # If terminal but no crash -> -d  # TODO: Closest position throughout?
-        # Otherwise -> log(p(x|s))  # TODO: Prob of disturbance given current state (Implement difference from last action)
-        if self.is_endstate():
-            if self.collision_happened:
-                return 
-        else:
-            return math.log(self.get_transition_probability)
+        if self.get_current_distance() < self.closest_boat_distance:
+            self.closest_boat_distance = self.get_current_distance()
     
     def reset_state(self):  
         self.straight_pos = [0,50]
@@ -59,9 +58,10 @@ class SimpleBoatController:
         self.action_trace = []
         self.collision_happened = False
         self.sim_in_endstate = False
-    
-    def fast_forward_state(self, action_trace):
-        for action in action_trace:
+        self.closest_boat_distance = self.get_current_distance()
+
+    def fast_forward(self, state):
+        for action in state:
             self.execute_action(action)
 
     def get_transition_probability(self, action):

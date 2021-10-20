@@ -1,19 +1,30 @@
-
+import math, json
 
 class TreeNode:
 
-    def __init__(self, parrent, state_path, reward):
-        self.times_visited = 0
-        self.totalEvaluation = 0  # Accumulated  evaluation of this node
-        self.reward = reward
-        self.children = {}
-        self.parrent = parrent
-        self.state_path = state_path
+    def __init__(self, state):
+        self.state = state
+        self.times_visited = 1  # TODO: Safe way out, but double check
+        self.children_visits = {}
+        self.children_evaluations = {}
+        self.children = []  # Probably just use children_visit.keys()
+        with open("parameters.json") as f:
+            params = json.load(f)  # Pass out to main?
+        self.exploration_coefficient = params["exploration_coefficient"]
     
     def visit_node(self):
-        # TODO: Visiting might be handled in backprop?
-        pass
+        self.times_visited += 1
     
+    def add_child(self, childNode):
+        self.children_visits[childNode] = 0
+        self.children_evaluations[childNode] = 0
+    
+    def visit_child(self, childNode):
+        self.children_visits[childNode] += 1
+    
+    def evaluate_child(self, child, evaluation):
+        self.children_evaluations[child] = (evaluation - self.children_evaluations[child])/self.children_visits[child]
+
     def backpropegate(self, reward, targetNode):
         if self == targetNode:
             pass
@@ -23,7 +34,17 @@ class TreeNode:
             if self.parrent is not None:
                 self.parrent.backpropegate(reward + self.reward, targetNode)  # TODO: Do we want to return this? Don't see why, but i'm partialy blind.
 
- 
+    def UCTselect(self):
+        maxValue = -math.inf
+        bestChild = None
+        for child in self.children_visits:
+            x = self.children_evaluations[child] + self.exploration_coefficient*math.sqrt(math.log(self.times_visited)/self.children_visits[child])
+            if x > maxValue:
+                bestChild = child
+                maxValue = x
+        return bestChild
+
+
 '''
     def getExpectedResult(self, action: int) -> float:
         #print(self.children[action].totalEvaluation, self.numTakenAction[action])
