@@ -16,7 +16,7 @@ class TreeNode:
         self.times_visited += 1
     
     def add_child(self, childNode):
-        self.children_visits[childNode] = 0
+        self.children_visits[childNode] = 1
         self.children_evaluations[childNode] = 0
     
     def visit_child(self, childNode):

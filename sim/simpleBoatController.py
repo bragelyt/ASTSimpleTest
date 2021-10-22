@@ -14,16 +14,16 @@ class SimpleBoatController:
         if state is not None:
             self.fast_forward(state)
     
-    def execute_action(self, action: int):  # Action should be in range [0,1]
-        totalRange = self.action_range[1]- self.action_range[0]
+    def execute_action(self, action: float):  # Action should be in range [0,1]
+        p = self.get_transition_probability(action)
+        totalRange = self.action_range[1] - self.action_range[0]
         scaledAction = totalRange*action + self.action_range[0]
         self.steerable_angle += scaledAction*math.pi/100
-        self.action_trace.append(action)
         self.next_state()
-        p = self.get_transition_probability()
+        self.action_trace.append(action)
         self.is_endstate()
         e = self.collision_happened  # TODO: crashed?
-        d = self.boat_distance()
+        d = self.closest_boat_distance
         return(p, e, d)
 
     def next_state(self):
@@ -48,8 +48,9 @@ class SimpleBoatController:
         return math.sqrt((pos1[0]-pos2[0])**2 + (pos1[1]-pos2[1])**2)
 
     def update_closest_distance(self):
-        if self.get_current_distance() < self.closest_boat_distance:
-            self.closest_boat_distance = self.get_current_distance()
+        distance = self.get_current_distance()
+        if distance < self.closest_boat_distance:
+            self.closest_boat_distance = distance
     
     def reset_state(self):  
         self.straight_pos = [0,50]
@@ -65,17 +66,16 @@ class SimpleBoatController:
             self.execute_action(action)
 
     def get_transition_probability(self, action):
-        if self.action_trace == None:
-            self.transition_probability = 1
+        if len(self.action_trace) == 0:
+            return 1
         else:
-            self.transition_probability = abs(action - self.action_trace[-1])  # TODO: Check if this is correct
+            return abs(action - self.action_trace[-1])  # TODO: Check if this is correct
 
     def get_sim_state(self):
         return self.action_trace
 
     def plot_routes(self):
         steerable_pos_trace, straight_pos_trace = self.get_position_trace()
-        print(steerable_pos_trace)
         cdt = self.crash_distance_threshold
         colors = {8*cdt: "gray", 4*cdt: "yellow", 2*cdt: "red", cdt: "black"}
         for i in range(len(steerable_pos_trace)):
