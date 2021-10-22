@@ -1,6 +1,5 @@
 import random, math, json
 from typing import Dict, List
-from ast.mcts import treeNode
 
 from ast.mcts.treeNode import TreeNode
 from sim.simpleBoatController import SimpleBoatController
@@ -19,23 +18,25 @@ class MCTSController:
         with open("parameters.json") as f:
             params = json.load(f)  # Pass out to main?
         self.collision_reward = params["collision_reward"]
+        self.k = params["bandit_coefficient"]
+        self.a = params["bandit_exponentioal"]
         self.MCT : Dict[List, TreeNode] = {}
-        self.k = 0.2
-        self.a = 0.5
 
-    def loop(self):
-        for i in range(25000):
-            if i%250 == 0:
-                print(i)
-            self.mainSim.reset_state()
+    def loop(self):  # Exploration to, creation and rollout form a leaf node in the Monte Carlo Tree
+        for i in range(50000):
+            # if i%1000 == 0:
+                # print(i)
+            self.mainSim.reset_sim()
             G = self.simulate()
             if G > self.bestReward:
-                self.bestState = self.mainSim.get_sim_state()
+                self.bestState = self.mainSim.get_state()
                 self.bestReward = G
+        print(len(self.MCT))
+        print(self.bestReward)
         return self.bestState
     
-    def simulate(self):
-        state = self.mainSim.get_sim_state()
+    def simulate(self):  # Three polict, expansion, rollout and backprop of a leaf node
+        state = self.mainSim.get_state()
         if tuple(state) not in list(self.MCT.keys()):
             simNode = TreeNode(state)
             self.MCT[tuple(state)] = simNode
@@ -43,7 +44,6 @@ class MCTSController:
         node = self.MCT[tuple(state)]
         node.visit_node()
         if len(node.children_visits) < self.k*node.times_visited**self.a:
-            print(len(node.children_visits), self.k*node.times_visited**self.a)
             seedAction = random.random()
             newBornState = state + [seedAction]
             newBornNode = TreeNode(newBornState)
@@ -51,9 +51,9 @@ class MCTSController:
         nextNode = node.UCTselect()  # TODO: OBS, returns state, not just action. Might want to change
         chosenSeed = nextNode.state[-1]
         p, e, d = self.mainSim.execute_action(chosenSeed)
-        terminal = self.mainSim.is_endstate()  # TODO: Stil think this is the wrong way around, (this and next line)
-        reward = self.get_reward(p,e,d, terminal)  # TODO: Think this could be moved out to node level. Might even be returned from execute_action
-        if terminal:
+        terminal = self.mainSim.is_endstate()  # TODO: Swaped this and prev line, don't understand why riche had it other way around
+        reward = self.reward(p, e, d, terminal)  # TODO: Dont move out to node, as it's used in rollout. Might be returned from execute_action
+        if terminal:  # If tree is big enough to have an endstate in it we cant rollout.
             self.endStates.append(state)
             return reward
         totalReward = reward + self.simulate()
@@ -62,17 +62,21 @@ class MCTSController:
         return totalReward
         
         
-    def rollout(self) -> float:
+    def rollout(self) -> float:  # Rollout from a leafnode to a terminal state. Returns ecumulated reward
         actionSeed = random.random()
         p, e, d = self.mainSim.execute_action(actionSeed)
-        terminal = self.mainSim.is_endstate()  # TODO: Stil think this is the wrong way around, (this and next line)
-        reward = self.get_reward(p,e,d, terminal)
+        terminal = self.mainSim.is_endstate()  # TODO: Swaped this and prev line, don't understand why riche had it other way around
+        reward = self.reward(p, e, d, terminal)
         # print(simulator.get_sim_state())
         if terminal:
             return reward
         return reward + self.rollout()
     
-    def get_reward(self, p,e,d, terminal):
+    def reward(self, # Reward function.
+        p,  # Transition probability
+        e,  # An episode accured (e.g. boats crashed or NMAC)
+        d,  # Closest distance between the boats throughout the simulation
+        terminal):  # Simulation has terminated
         if terminal:
             if e:
                 return self.collision_reward
@@ -80,6 +84,3 @@ class MCTSController:
                 return -d
         else:
             return math.log(p)
-
-    def list_to_string(self, list):
-        return 
