@@ -109,7 +109,7 @@ class SimpleBoatController:
         if len(self.action_trace) == 0:
             return 1
         else:
-            return abs(action - self.action_trace[-1])  # TODO: Check if this is correct
+            return 1-abs(action - self.action_trace[-1])  # TODO: Check if this is correct
 
     def _get_position_trace(self):  # Prev pos is not stored, so sim is reset, and fast forwarded through
         action_trace = self.action_trace

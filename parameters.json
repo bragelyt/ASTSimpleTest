@@ -5,6 +5,6 @@
     "collision_reward": 100,
     "action_range": [-5, 5],
     "exploration_coefficient": 0.5,
-    "bandit_coefficient": 0.2,
-    "bandit_exponentioal": 0.5
+    "bandit_coefficient": 0.5,
+    "bandit_exponentioal": 0.6
 }
