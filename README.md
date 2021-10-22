@@ -8,7 +8,7 @@ Goal for MCTS is to crash the steerable boat into a boat goint straight. The boa
 
 ## MCTS
 
-The monte carlo tree search is quite simple, where one loop searches down through the tree, finds a leaf node and does a single rollout from that node.
+The monte carlo tree search is quite simple, where one loop searches down through the tree, finds a leaf node and does a single rollout from that node. Based on pseudocode on page 13 in Lee, Ritchie et al., "Adaptive Stress Testing: Finding Likely Failure Events with Reinforcement Learning"
 
 ## TODOs
 
