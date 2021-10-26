@@ -16,14 +16,14 @@ class TreeNode:
         self.timesVisited += 1
     
     def add_child(self, childNode):
-        self.childrenVisits[childNode] = 1
+        self.childrenVisits[childNode] = 0
         self.childrenEvaluations[childNode] = 0
     
     def visit_child(self, childNode):
         self.childrenVisits[childNode] += 1
     
     def evaluate_child(self, child, evaluation):
-        self.childrenEvaluations[child] = (evaluation - self.childrenEvaluations[child])/self.childrenVisits[child]
+        self.childrenEvaluations[child] = self.childrenEvaluations[child] + (evaluation - self.childrenEvaluations[child])/self.childrenVisits[child]
 
     def backpropegate(self, reward, targetNode):
         if self == targetNode:
@@ -34,11 +34,11 @@ class TreeNode:
             if self.parrent is not None:
                 self.parrent.backpropegate(reward + self.reward, targetNode)  # TODO: Do we want to return this? Don't see why, but i'm partialy blind.
 
-    def UCTselect(self):
+    def UCTselect(self):  # Tree policy. "Bandit based Monte-Carlo Planning", Kocsis and Szepervari (2006)
         maxValue = -math.inf
         bestChild = None
         for child in self.childrenVisits:
-            x = self.childrenEvaluations[child] + self.explorationCoefficient*math.sqrt(math.log(self.timesVisited)/self.childrenVisits[child])
+            x = self.childrenEvaluations[child] + self.explorationCoefficient*(math.sqrt(math.log(self.timesVisited)/(1+self.childrenVisits[child])))
             if x > maxValue:
                 bestChild = child
                 maxValue = x

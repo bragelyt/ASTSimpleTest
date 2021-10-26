@@ -27,19 +27,31 @@ class SimpleBoatController:
         self.steplength = params["steplength"]
         self.crash_distance_threshold = params["crash_distance_threshold"]
         self.action_range = params["action_range"]
-        self.reset_sim()
-        if state is not None:
-            self._fast_forward(state)
+        self.reset_sim(state)
     
+
+    def reset_sim(self, action_trace=None):  
+        with open("parameters.json") as f:
+            params = json.load(f)
+        self.straight_pos = params["straight_pos"]
+        self.steerable_pos = params["steerable_pos"]
+        self.steerable_angle = 0
+        self.action_trace = []
+        self.collision_happened = False
+        self.sim_in_endstate = False
+        self.closest_boat_distance = self._get_current_distance()
+        if action_trace is not None:
+            self._fast_forward(action_trace)
+            
     def execute_action(self, action: float):  # Action should be in range [0,1]
         p = self._get_transition_probability(action)
         totalRange = self.action_range[1] - self.action_range[0]
         scaledAction = totalRange*action + self.action_range[0]
         self.steerable_angle += scaledAction*math.pi/100
         self._next_state()
-        self.action_trace.append(action)
         self.is_endstate()
-        e = self.collision_happened  # TODO: crashed?
+        self.action_trace.append(action)
+        e = self.collision_happened
         d = self.closest_boat_distance
         return(p, e, d)
 
@@ -54,21 +66,12 @@ class SimpleBoatController:
     
     def get_state(self):    
         return self.action_trace
-
-    def reset_sim(self):  
-        self.straight_pos = [0,50]
-        self.steerable_pos = [30,0]
-        self.steerable_angle = 0
-        self.action_trace = []
-        self.collision_happened = False
-        self.sim_in_endstate = False
-        self.closest_boat_distance = self._get_current_distance()
     
     def plot(self):
         steerable_pos_trace, straight_pos_trace = self._get_position_trace()
         cdt = self.crash_distance_threshold
         colors = {8*cdt: "gray", 4*cdt: "yellow", 2*cdt: "red", cdt: "black"}
-        for i in range(len(steerable_pos_trace)):
+        for i in range(len(steerable_pos_trace)-1):
             steerable_pos = steerable_pos_trace[i]
             straight_pos = straight_pos_trace[i]
             distance = self._boat_distance(steerable_pos, straight_pos)
