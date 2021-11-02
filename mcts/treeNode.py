@@ -4,10 +4,9 @@ class TreeNode:
 
     def __init__(self, state):
         self.state = state
-        self.timesVisited = 1  # TODO: Safe way out, but double check
+        self.timesVisited = 1  # Initiates only after visit so should be one
         self.childrenVisits = {}
         self.childrenEvaluations = {}
-        self.children = []  # Probably just use children_visit.keys()
         with open("parameters.json") as f:
             params = json.load(f)  # Pass out to main?
         self.explorationCoefficient = params["exploration_coefficient"]

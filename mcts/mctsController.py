@@ -1,4 +1,6 @@
 import random, math, json
+
+from datetime import datetime
 from typing import Dict, List
 from IPython.core.pylabtools import figsize
 
@@ -14,6 +16,7 @@ class MCTSController:
     def __init__(self) -> None:  # Currently using this one
         self.sim = SimpleBoatController()
         self.endStates = []
+        self.crashStates = []
         self.bestState = None
         self.bestReward = -math.inf
         with open("parameters.json") as f:
@@ -23,10 +26,11 @@ class MCTSController:
         self.a = params["expansion_exponentioal"]
         self.MCT : Dict[List, TreeNode] = {}
 
-    def loop(self):  # Exploration to, creation and rollout form a leaf node in the Monte Carlo Tree
+    def loop(self, numberOfLoops):  # Exploration to, creation and rollout form a leaf node in the Monte Carlo Tree
+        timeStart = datetime.now()
         Gs = []
         index = []
-        for i in range(5000):
+        for i in range(numberOfLoops):
             if (i%1000 == 0):
                 print(i)
             self.sim.reset_sim()
@@ -37,10 +41,15 @@ class MCTSController:
                 print(f'Score {round(G, 2)} found at iteration {i}')
             Gs.append(G)
             index.append(i)
-        print(f'{"Total number of iterations":<25} | {i+1:4}')
+        print(f'{"Number of iterations":<25} | {i+1:4}')
         print(f'{"Number of nodes in tree":<25} | {len(self.MCT):4}')
         print(f'{"Best reward found":<25} | {round(self.bestReward, 2):4}')
+        print(f'{"Runtime":<25} | {datetime.now() -timeStart}')
         print(f'{"Best action trace":<25} | {self.bestState[:-1]}')
+        print(f'{"Nr of crash states found":<25} | {len(self.crashStates)}')
+        print(f'{"Nr of unique crash states":<25} | {len(self.crashStates)}')
+        with open('crashStates.json', 'w') as f:
+            json.dump(self.crashStates, f, ensure_ascii=False, indent=4)
         self.MCTStats()
         plt.plot(index, Gs)
         plt.show()
@@ -66,6 +75,8 @@ class MCTSController:
         reward = self.reward(p, e, d, terminal)  # TODO: Might be returned from execute_action
         if terminal:  # If tree is big enough to have an endstate in it we cant rollout.
             self.endStates.append(state)  # TODO: Get som stats on how often this happened. Does it happen to same nodes multiple times?
+            if e:
+                self.crashStates.append(tuple(state))
             return reward
         totalReward = reward + self.simulate()
         node.visit_child(nextNode)
@@ -91,6 +102,10 @@ class MCTSController:
         p, e, d = self.sim.execute_action(actionSeed)
         reward = self.reward(p, e, d, terminal)
         if terminal:
+            state = self.sim.get_state()
+            self.endStates.append(state)
+            if e:
+                self.crashStates.append(tuple(state))
             return reward
         return reward + self.rollout()
     
@@ -116,3 +131,16 @@ class MCTSController:
         print(totalChildren/len(self.MCT))
         sn.countplot(x=childrenCounter)
         plt.show()
+
+    def rankMCTNodes(self):
+        root = self.MCT.values()[0]
+        ranks = [[root]]
+        rank = 0
+        while len(ranks[rank]) > 0:
+            ranks.append([])
+            for node in ranks[rank]:
+                for child in node.childrenVisits.keys():
+                    ranks[rank+1].append(child)
+            rank += 1
+        for rankList in ranks:
+            print(len(rankList))

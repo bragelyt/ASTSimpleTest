@@ -3,6 +3,9 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,visualstudiocode
 
 ### Python ###
+# Project specific
+crashStates.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
