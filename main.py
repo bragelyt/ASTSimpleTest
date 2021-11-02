@@ -6,10 +6,7 @@ import random
 
 def main():
     MCTS = MCTSController()
-    bestState, bestReward = MCTS.loop(4000)
-    SBC = SimpleBoatController(bestState)
-    SBC.plot()
-    print(SBC.collision_happened)
+    MCTS.loop(4000)
 
 def randomPath(verbose = True):
     SBC = SimpleBoatController()

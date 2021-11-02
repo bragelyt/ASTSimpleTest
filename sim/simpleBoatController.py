@@ -71,7 +71,7 @@ class SimpleBoatController:
         steerable_pos_trace, straight_pos_trace = self._get_position_trace()
         cdt = self.crash_distance_threshold
         colors = {8*cdt: "gray", 4*cdt: "yellow", 2*cdt: "red", cdt: "black"}
-        for i in range(len(steerable_pos_trace)-1):
+        for i in range(len(steerable_pos_trace)):
             steerable_pos = steerable_pos_trace[i]
             straight_pos = straight_pos_trace[i]
             distance = self._boat_distance(steerable_pos, straight_pos)

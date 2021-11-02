@@ -1,7 +1,8 @@
 import random, math, json
 
-from datetime import datetime
+from datetime import datetime, time
 from typing import Dict, List
+from typing_extensions import runtime
 from IPython.core.pylabtools import figsize
 
 import matplotlib.pyplot as plt
@@ -24,13 +25,14 @@ class MCTSController:
         self.collision_reward = params["collision_reward"]
         self.k = params["expansion_coefficient"]
         self.a = params["expansion_exponentioal"]
-        self.MCT : Dict[List, TreeNode] = {}
+        self.MCT : Dict[tuple, TreeNode] = {}
 
     def loop(self, numberOfLoops):  # Exploration to, creation and rollout form a leaf node in the Monte Carlo Tree
         timeStart = datetime.now()
         Gs = []
         index = []
         for i in range(numberOfLoops):
+            self.currentNode = None
             if (i%1000 == 0):
                 print(i)
             self.sim.reset_sim()
@@ -40,19 +42,10 @@ class MCTSController:
                 self.bestReward = G
                 print(f'Score {round(G, 2)} found at iteration {i}')
             Gs.append(G)
-            index.append(i)
-        print(f'{"Number of iterations":<25} | {i+1:4}')
-        print(f'{"Number of nodes in tree":<25} | {len(self.MCT):4}')
-        print(f'{"Best reward found":<25} | {round(self.bestReward, 2):4}')
-        print(f'{"Runtime":<25} | {datetime.now() -timeStart}')
-        print(f'{"Best action trace":<25} | {self.bestState[:-1]}')
-        print(f'{"Nr of crash states found":<25} | {len(self.crashStates)}')
-        print(f'{"Nr of unique crash states":<25} | {len(self.crashStates)}')
+            runTime = datetime.now() - timeStart
         with open('crashStates.json', 'w') as f:
             json.dump(self.crashStates, f, ensure_ascii=False, indent=4)
-        self.MCTStats()
-        plt.plot(index, Gs)
-        plt.show()
+        self.stats(Gs, runTime)
         return self.bestState, self.bestReward
     
     def simulate(self):  # Three polict, expansion, rollout and backprop of a leaf node
@@ -60,24 +53,27 @@ class MCTSController:
         if tuple(state) not in list(self.MCT.keys()):
             simNode = TreeNode(state)
             self.MCT[tuple(state)] = simNode
+            # if self.currentNode is not None:
+            #     self.currentNode.add_child(simNode)
             return self.rollout()  # return self.multipleRollouts(50)  # return self.rollout()
         node = self.MCT[tuple(state)]
         node.visit_node()
         if len(node.childrenVisits) < self.k*node.timesVisited**self.a:
             seedAction = random.random()
             newBornState = state + [seedAction]
-            newBornNode = TreeNode(newBornState)
-            node.add_child(newBornNode)
+            node.add_child(newBornState)
         nextNode = node.UCTselect()  # TODO: OBS, returns state, not just action. Might want to change
-        chosenSeed = nextNode.state[-1]
-        terminal = self.sim.is_endstate()  # TODO: Probably swap back
+        chosenSeed = nextNode[-1]
         p, e, d = self.sim.execute_action(chosenSeed)
+        terminal = self.sim.is_endstate()  # TODO: Swapped back
         reward = self.reward(p, e, d, terminal)  # TODO: Might be returned from execute_action
+        # self.currentNode = nextNode
         if terminal:  # If tree is big enough to have an endstate in it we cant rollout.
             self.endStates.append(state)  # TODO: Get som stats on how often this happened. Does it happen to same nodes multiple times?
             if e:
                 self.crashStates.append(tuple(state))
             return reward
+        # self.currentNode = nextNode
         totalReward = reward + self.simulate()
         node.visit_child(nextNode)
         node.evaluate_child(nextNode, totalReward)
@@ -98,8 +94,8 @@ class MCTSController:
 
     def rollout(self) -> float:  # Rollout from a leafnode to a terminal state. Returns ecumulated reward
         actionSeed = random.random()
-        terminal = self.sim.is_endstate()
         p, e, d = self.sim.execute_action(actionSeed)
+        terminal = self.sim.is_endstate()
         reward = self.reward(p, e, d, terminal)
         if terminal:
             state = self.sim.get_state()
@@ -121,26 +117,43 @@ class MCTSController:
                 return -d
         else:
             return math.log(p)
-    
-    def MCTStats(self):
-        childrenCounter = []
-        totalChildren = 0
-        for state, node in self.MCT.items():
-            totalChildren += len(node.childrenVisits)
-            childrenCounter.append(len(node.childrenVisits))
-        print(totalChildren/len(self.MCT))
-        sn.countplot(x=childrenCounter)
-        plt.show()
 
-    def rankMCTNodes(self):
-        root = self.MCT.values()[0]
+    def stats(self, Gs, runTime):
+        print("-"*35)
+        print(f'"Runtime"       | {runTime}')
+        print(f'{"Best reward found":<25} | {round(self.bestReward, 2):4}')
+        print(f'{"Nr of crash states found":<25} | {len(self.crashStates):}')
+        print(f'{"Unique crash states found":<25} | {len(set(self.crashStates))}')
+        root = list(self.MCT.values())[0]
         ranks = [[root]]
+        # lastState = [[0]]
         rank = 0
         while len(ranks[rank]) > 0:
             ranks.append([])
+            # lastState.append([])
             for node in ranks[rank]:
-                for child in node.childrenVisits.keys():
-                    ranks[rank+1].append(child)
+                for childNodeState in node.childrenVisits.keys():
+                    if tuple(childNodeState) in self.MCT.keys():
+                        child = self.MCT[tuple(childNodeState)]
+                        ranks[rank+1].append(child)
+                    # lastState[rank+1].append(child.state[rank])
             rank += 1
-        for rankList in ranks:
-            print(len(rankList))
+        tot = 0
+        for i, rankList in enumerate(ranks[:-1]):
+            tot += len(rankList)
+            print(f'At depth {i:2} there are {len(rankList):3} nodes')
+        print(f'Total nodes:',tot)
+        childrenCounter = []
+        totalChildren = 0
+        for node in self.MCT.values():
+            totalChildren += len(node.childrenVisits)
+            childrenCounter.append(len(node.childrenVisits))
+        print(f'Average nr of children in tree: {round(totalChildren/len(self.MCT),3)}')
+        print(f'{"Best action trace":<25} | {self.bestState}')
+        printSim = SimpleBoatController(self.bestState)
+        printSim.plot()
+        sn.countplot(x=childrenCounter)
+        plt.show()
+        index = range(len(Gs))
+        plt.plot(index, Gs)
+        plt.show()
