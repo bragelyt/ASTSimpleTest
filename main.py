@@ -1,4 +1,3 @@
-# %%
 from sim.simpleBoatController import SimpleBoatController
 from mcts.mctsController import MCTSController
 import matplotlib.pyplot as plt
@@ -20,10 +19,8 @@ def randomPath(verbose = True):
         SBC.plot()
     return SBC.collision_happened
 
-# %%
 main()
 
-# # %%
 # randomPath()
 
 
