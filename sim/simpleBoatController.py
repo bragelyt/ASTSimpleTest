@@ -21,33 +21,31 @@ import matplotlib.pyplot as plt
 
 class SimpleBoatController:
 
-    def __init__(self, state = None) -> None:
+    def __init__(self) -> None:
         with open("parameters.json") as f:
             params = json.load(f)
         self.steplength = params["steplength"]
         self.crash_distance_threshold = params["crash_distance_threshold"]
         self.action_range = params["action_range"]
-        self.reset_sim(state)
+        self.reset_sim()
     
 
-    def reset_sim(self, action_trace=None):  
+    def reset_sim(self): #, action_trace=None):  
         with open("parameters.json") as f:
             params = json.load(f)
         self.straight_pos = params["straight_pos"]
         self.steerable_pos = params["steerable_pos"]
         self.steerable_angle = 0
-        self.action_trace = []
+        self.action_trace = []  # TODO: Should only need last state. Might need to put plot further out
         self.collision_happened = False
         self.sim_in_endstate = False
         self.closest_boat_distance = self._get_current_distance()
-        if action_trace is not None:
-            self._fast_forward(action_trace)
+        # if action_trace is not None:
+        #     self._fast_forward(action_trace)
             
     def execute_action(self, action: float):  # Action should be in range [0,1]
         p = self._get_transition_probability(action)
-        totalRange = self.action_range[1] - self.action_range[0]
-        scaledAction = totalRange*action + self.action_range[0]
-        self.steerable_angle += scaledAction*math.pi/100
+        self.steerable_angle += action*math.pi/100
         self._next_state()
         self.is_endstate()
         self.action_trace.append(action)
@@ -64,8 +62,8 @@ class SimpleBoatController:
                 self.sim_in_endstate = True
         return self.sim_in_endstate
     
-    def get_state(self):    
-        return self.action_trace
+    # def get_state(self):    
+    #     return self.action_trace
     
     def plot(self):
         steerable_pos_trace, straight_pos_trace = self._get_position_trace()
@@ -104,15 +102,11 @@ class SimpleBoatController:
         if distance < self.closest_boat_distance:
             self.closest_boat_distance = distance
 
-    def _fast_forward(self, state):
-        for action in state:
-            self.execute_action(action)
-
     def _get_transition_probability(self, action):
         if len(self.action_trace) == 0:
             return 1
         else:
-            return 1-abs(action - self.action_trace[-1])  # TODO: Check if this is correct
+            return 1-abs(action - self.action_trace[-1])/10  # TODO: Check if this is correct
 
     def _get_position_trace(self):  # Prev pos is not stored, so sim is reset, and fast forwarded through
         action_trace = self.action_trace
