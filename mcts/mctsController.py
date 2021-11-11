@@ -79,19 +79,6 @@ class MCTSController:
         node.evaluate_child(nextNode, totalReward)
         return totalReward
     
-    def multipleRollouts(self, rolloutAmount):  # TODO: Not working correctly. Idea is to rollout x times and return best rollout.
-        bestReward = -math.inf
-        state = self.simIntefrace.get_state()
-        bestActionTrace = None
-        for i in range(rolloutAmount):
-            reward = self.rollout()
-            if reward > bestReward:
-                bestActionTrace = self.simIntefrace.get_state()
-                bestReward = reward
-            self.simIntefrace.set_state(state)
-        self.simIntefrace.set_state(bestActionTrace)
-        return bestReward
-
     def rollout(self) -> float:  # Rollout from a leafnode to a terminal state. Returns ecumulated reward
         actionSeed = random.random()
         p, e, d = self.simIntefrace.step(actionSeed)
@@ -117,6 +104,19 @@ class MCTSController:
                 return -d
         else:
             return math.log(p)
+    
+    def multipleRollouts(self, rolloutAmount):  # TODO: Not very effective. Might want to look into returning avg instead? Or just scrap
+        bestReward = -math.inf
+        state = self.simIntefrace.get_state()
+        bestActionTrace = None
+        for i in range(rolloutAmount):
+            reward = self.rollout()
+            if reward > bestReward:
+                bestActionTrace = self.simIntefrace.get_state()
+                bestReward = reward
+            self.simIntefrace.set_state(state)
+        self.simIntefrace.set_state(bestActionTrace)
+        return bestReward
 
     def stats(self, Gs, runTime):
         print("-"*35)

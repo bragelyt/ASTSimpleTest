@@ -36,7 +36,6 @@ class SimpleBoatController:
         self.straight_pos = params["straight_pos"]
         self.steerable_pos = params["steerable_pos"]
         self.steerable_angle = 0
-        self.action_trace = []  # TODO: Only used for plotting. Should make a SimpleBoatPlotter class
         self.collision_happened = False
         self.sim_in_endstate = False
         self.closest_boat_distance = self._get_current_distance()
@@ -47,7 +46,6 @@ class SimpleBoatController:
         self.is_endstate()
         e = self.collision_happened
         d = self.closest_boat_distance
-        self.action_trace.append(action)  # TODO: Only used for plotting. Should make a SimpleBoatPlotter class
         return(e, d)
 
     def is_endstate(self):
@@ -59,8 +57,8 @@ class SimpleBoatController:
                 self.sim_in_endstate = True
         return self.sim_in_endstate
     
-    def plot(self):
-        steerable_pos_trace, straight_pos_trace = self._get_position_trace()
+    def plot(self, action_trace):
+        steerable_pos_trace, straight_pos_trace = self._get_position_trace(action_trace)
         cdt = self.crash_distance_threshold
         colors = {8*cdt: "gray", 4*cdt: "yellow", 2*cdt: "red", cdt: "black"}
         for i in range(len(steerable_pos_trace)):
@@ -96,8 +94,7 @@ class SimpleBoatController:
         if distance < self.closest_boat_distance:
             self.closest_boat_distance = distance
 
-    def _get_position_trace(self):  # Prev pos is not stored, so sim is reset, and fast forwarded through
-        action_trace = self.action_trace
+    def _get_position_trace(self, action_trace):  # Prev pos is not stored, so sim is reset, and fast forwarded through
         self.reset_sim()
         steerable_state = []
         straight_state = []

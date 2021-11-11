@@ -4,7 +4,6 @@ from typing import List, Tuple
 
 from sim.simpleBoatController import SimpleBoatController
 
-
 class SimInterface:
 
     def __init__(self) -> None:  # Initiates simulation at state zero
@@ -19,7 +18,7 @@ class SimInterface:
         self.lastActionSeed = None
 
     def step(self, actionSeed) -> Tuple:  # return (p, e, d)
-        action = actionSeed * self.totalRange + self.minAction
+        action = self._get_action_from_seed(actionSeed)
         p = self._get_transition_probability(actionSeed)
         e, d = self.simWorld.execute_action(action)
         self.actionTrace.append(actionSeed)
@@ -45,10 +44,19 @@ class SimInterface:
         self.simWorld.reset_sim()
 
     def plot(self) -> None:
-        self.simWorld.plot()
+        self.simWorld.plot(self._generate_action_trace(self.actionTrace))
 
     def _get_transition_probability(self, action):
         if self.lastActionSeed is None:
             return 1
         else:
             return 1-abs(action - self.lastActionSeed)  # TODO: Check if this is correct
+    
+    def _get_action_from_seed(self, actionSeed):
+        return actionSeed * self.totalRange + self.minAction
+        
+    def _generate_action_trace(self, actionSeedTrace):
+        actionTrace = []
+        for actionSeed in actionSeedTrace:
+            actionTrace.append(self._get_action_from_seed(actionSeed))
+        return actionTrace
