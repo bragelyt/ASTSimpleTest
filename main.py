@@ -1,3 +1,4 @@
+from sim.simInterface import SimInterface
 from sim.simpleBoatController import SimpleBoatController
 from mcts.mctsController import MCTSController
 import matplotlib.pyplot as plt
@@ -9,21 +10,22 @@ def main():
     MCTS.loop(4000)
 
 def randomPath(verbose = True):
-    SBC = SimpleBoatController()
+    SBC = SimInterface()
     while not SBC.sim_in_endstate:
-        SBC.execute_action(random.random())
+        SBC.step(random.random())
     if verbose:
         SBC.plot()
     return SBC.collision_happened
 
-main()
+# main()
 
-# randomPath()
+randomPath()
 
 
-# # %%
+# %%
 # hits = 0
-# for i in range(10000):
+# for i in range(1000000):
 #     if randomPath(False):
 #         hits+=1
-# print(hits, "collisions in 10,000 random routes")
+#     if i%10000 == 0:
+#         print(hits, "collisions in",i,"random routes")
