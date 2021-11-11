@@ -16,12 +16,15 @@ class SimInterface:
         self.minAction = action_range[0]
         self.actionTrace : List(float) = []
         self.sim_in_endstate : bool = False
+        self.lastActionSeed = None
 
     def step(self, actionSeed) -> Tuple:  # return (p, e, d)
         action = actionSeed * self.totalRange + self.minAction
-        p, e, d = self.simWorld.execute_action(action)
+        p = self._get_transition_probability(actionSeed)
+        e, d = self.simWorld.execute_action(action)
         self.actionTrace.append(actionSeed)
         self.sim_in_endstate = self.simWorld.is_endstate()
+        self.lastActionSeed = actionSeed
         return(p, e, d)
 
     def is_terminal(self) -> bool:
@@ -38,11 +41,14 @@ class SimInterface:
 
     def reset_sim(self) -> None:
         self.actionTrace = []
+        self.lastActionSeed = None
         self.simWorld.reset_sim()
 
     def plot(self) -> None:
         self.simWorld.plot()
 
-    # def _rewertToSeed(self, action) -> float:
-    #     actionSeed = (action- self.minAction)/self.totalRange
-    #     return actionSeed
+    def _get_transition_probability(self, action):
+        if self.lastActionSeed is None:
+            return 1
+        else:
+            return 1-abs(action - self.lastActionSeed)  # TODO: Check if this is correct
