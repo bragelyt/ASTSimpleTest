@@ -17,15 +17,13 @@ def randomPath(verbose = True):
         SBC.plot()
     return SBC.collision_happened
 
-# main()
+main()
 
-randomPath()
+# randomPath()
 
-
-# %%
 # hits = 0
-# for i in range(1000000):
+# for i in range(10**6):
 #     if randomPath(False):
 #         hits+=1
-#     if i%10000 == 0:
+#     if (i+1)%10000 == 0:
 #         print(hits, "collisions in",i,"random routes")

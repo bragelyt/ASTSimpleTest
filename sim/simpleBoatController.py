@@ -73,8 +73,8 @@ class SimpleBoatController:
             plt.plot([steerable_pos[0], straight_pos[0]], [steerable_pos[1], straight_pos[1]], c = "#F0F0F0", zorder=0)
             plt.scatter(steerable_pos[0], steerable_pos[1], c = color, zorder=10)
             plt.scatter(straight_pos[0], straight_pos[1], c = color, zorder=10)
-        plt.ylim(0, 100)
-        plt.xlim(0, 100)
+        plt.ylim(-10, 110)
+        plt.xlim(-10, 110)
         plt.show()
 
     def _next_state(self):
@@ -83,7 +83,7 @@ class SimpleBoatController:
         self.straight_pos[0] += self.steplength
         self._update_closest_distance()
     
-    def _get_current_distance(self):  # TODO: Run after next_state and store value?
+    def _get_current_distance(self):
         return self._boat_distance(self.steerable_pos, self.straight_pos)
 
     def _boat_distance(self, pos1, pos2):

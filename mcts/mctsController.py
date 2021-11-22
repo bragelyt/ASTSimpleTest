@@ -23,7 +23,6 @@ class MCTSController:
         self.bestReward = -math.inf
         with open("parameters.json") as f:
             params = json.load(f)  # Pass out to main?
-        self.collision_reward = params["collision_reward"]
         self.k = params["expansion_coefficient"]
         self.a = params["expansion_exponentioal"]
         self.MCT : Dict[tuple, TreeNode] = {}
@@ -53,8 +52,6 @@ class MCTSController:
         if tuple(state) not in list(self.MCT.keys()):
             simNode = TreeNode(state)
             self.MCT[tuple(state)] = simNode
-            # if self.currentNode is not None:
-            #     self.currentNode.add_child(simNode)
             return self.rollout()  # return self.multipleRollouts(50)  # return self.rollout()
         node = self.MCT[tuple(state)]
         node.visit_node()
@@ -64,12 +61,12 @@ class MCTSController:
             node.add_child(newBornState)
         nextNode = node.UCTselect()  # TODO: OBS, returns state, not just action. Might want to change
         chosenSeed = nextNode[-1]
-        p, e, d = self.simIntefrace.step(chosenSeed)
+        reward = self.simIntefrace.step(chosenSeed)
         terminal = self.simIntefrace.is_terminal()  # TODO: Swapped back
-        reward = self.reward(p, e, d, terminal)  # TODO: Might be returned from execute_action
+        e = self.simIntefrace.is_failure_episode()
         # self.currentNode = nextNode
         if terminal:  # If tree is big enough to have an endstate in it we cant rollout.
-            self.endStates.append(state)  # TODO: Get som stats on how often this happened. Does it happen to same nodes multiple times?
+            self.endStates.append(state)
             if e:
                 self.crashStates.append(tuple(state))
             return reward
@@ -81,9 +78,9 @@ class MCTSController:
     
     def rollout(self) -> float:  # Rollout from a leafnode to a terminal state. Returns ecumulated reward
         actionSeed = random.random()
-        p, e, d = self.simIntefrace.step(actionSeed)
+        reward = self.simIntefrace.step(actionSeed)
         terminal = self.simIntefrace.is_terminal()
-        reward = self.reward(p, e, d, terminal)
+        e = self.simIntefrace.is_failure_episode()
         if terminal:
             state = self.simIntefrace.get_state()
             self.endStates.append(state)
@@ -91,19 +88,6 @@ class MCTSController:
                 self.crashStates.append(tuple(state))
             return reward
         return reward + self.rollout()
-    
-    def reward(self, # Reward function.
-        p,  # Transition probability
-        e,  # An episode accured (e.g. boats crashed or NMAC)
-        d,  # Closest distance between the boats throughout the simulation
-        terminal):  # Simulation has terminated
-        if terminal:
-            if e:
-                return self.collision_reward
-            else:
-                return -d
-        else:
-            return math.log(p)
     
     def multipleRollouts(self, rolloutAmount):  # TODO: Not very effective. Might want to look into returning avg instead? Or just scrap
         bestReward = -math.inf
