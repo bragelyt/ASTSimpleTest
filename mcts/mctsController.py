@@ -1,6 +1,6 @@
 import random, math, json
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Dict, List
 from typing_extensions import runtime
 from IPython.core.pylabtools import figsize
@@ -15,7 +15,8 @@ from sim.simpleBoatController import SimpleBoatController
 
 class MCTSController:
 
-    def __init__(self) -> None:  # Currently using this one
+    def __init__(self, verbose = True) -> None:  # Currently using this one
+        self.verbose = verbose
         self.simIntefrace = SimInterface()
         self.endStates = []
         self.crashStates = []
@@ -29,23 +30,37 @@ class MCTSController:
 
     def loop(self, numberOfLoops):  # Exploration to, creation and rollout form a leaf node in the Monte Carlo Tree
         timeStart = datetime.now()
+        deltaTime = datetime.now()
         Gs = []
+        its = []
+        itTimes = []
+        runTimes = []
+        firstIt = None
         for i in range(numberOfLoops):
             self.currentNode = None
-            if (i%1000 == 0):
+            if (self.verbose and i%1000 == 0):
+                itTimes.append((datetime.now() - deltaTime).total_seconds())
+                runTimes.append((datetime.now() - timeStart).total_seconds())
+                deltaTime = datetime.now()
+                its.append(i)
                 print(i)
             self.simIntefrace.reset_sim()
             G = self.simulate()
             if G > self.bestReward:
+                if G > 0 and firstIt is None:
+                    firstIt = i
                 self.bestState = self.simIntefrace.get_state()
                 self.bestReward = G
-                print(f'Score {round(G, 2)} found at iteration {i}')
+                if self.verbose:
+                    print(f'Score {round(G, 2)} found at iteration {i}')
             Gs.append(G)
             runTime = datetime.now() - timeStart
         with open('crashStates.json', 'w') as f:
             json.dump(self.crashStates, f, ensure_ascii=False, indent=4)
-        self.stats(Gs, runTime)
-        return self.bestState, self.bestReward
+        if self.verbose:
+            self.plotRunTime(its, itTimes, runTimes)
+            self.stats(Gs, runTime)
+        return self.bestState, self.bestReward, firstIt, self.crashStates
     
     def simulate(self):  # Three polict, expansion, rollout and backprop of a leaf node
         state = self.simIntefrace.get_state()
@@ -101,8 +116,32 @@ class MCTSController:
             self.simIntefrace.set_state(state)
         self.simIntefrace.set_state(bestActionTrace)
         return bestReward
+    
+    def plotRunTime(self, its, itTimes, runTimes):
+        plt.rcParams["figure.figsize"] = (5,4)
+        ticks = []
+        for i in range(len(its)):
+            if i%5 == 0:
+                ticks.append(its[i])
+        plt.xticks(ticks)
+
+        plt.plot(its, runTimes)
+        plt.xlabel("Iterations")
+        plt.ylabel("Runtime (sec)")
+        plt.show()
+
+        bins = []
+        for itt in its:
+            bins.append(itt+500)
+            
+        plt.xticks(ticks)
+        plt.hist(x=its[1:], weights=itTimes[1:], bins= bins, edgecolor='black',color='white')
+        plt.xlabel("Iterations")
+        plt.ylabel("Runtime (sec)")
+        plt.show()
 
     def stats(self, Gs, runTime):
+        # plt.rcParams["figure.figsize"] = (7.5,7)
         print("-"*35)
         root = list(self.MCT.values())[0]
         ranks = [[root]]
@@ -141,5 +180,7 @@ class MCTSController:
         sn.countplot(x=childrenCounter)
         plt.show()
         index = range(len(Gs))
+        plt.xlabel("Iterations")
+        plt.ylabel("Reward")
         plt.plot(index, Gs)
         plt.show()
